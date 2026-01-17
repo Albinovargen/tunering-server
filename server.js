@@ -241,5 +241,5 @@ function advanceWinner(room, match, winnerNum) {
 }
 
 server.listen(3000, () => {
-    console.log('Server igång på port 3000');
+    console.log('Servern är startad och redo! (Intern port: 3000)');
 });
