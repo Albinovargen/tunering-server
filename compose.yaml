@@ -1,0 +1,8 @@
+services:
+  tunering-server:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    # Provide a name for the container
+    container_name: tunering-server

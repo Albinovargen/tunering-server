@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="sv">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turnering Deluxe</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <style>
+        /* --- MODERN PALETT --- */
+        :root {
+            --bg-main: #f8f9fa;
+            --primary: #6366f1;
+            /* Soft Indigo */
+            --primary-hover: #4f46e5;
+            --primary-light: #e0e7ff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* CUSTOM TOOLTIP */
+        #custom-tooltip {
+            position: fixed;
+            background: #1e293b;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            pointer-events: none;
+            z-index: 9999;
+            display: none;
+            white-space: nowrap;
+            box-shadow: var(--shadow);
+        }
+
+        /* SCREENS */
+        .screen {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-main);
+            transition: opacity 0.3s;
+            z-index: 10;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* CARD DESIGN */
+        .card {
+            background: white;
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            width: 90%;
+            max-width: 480px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .card h1 {
+            color: var(--primary);
+            margin: 0;
+            font-size: 2em;
+            letter-spacing: -1px;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            font-size: 1.1em;
+            box-sizing: border-box;
+            font-family: inherit;
+            transition: border 0.2s;
+        }
+
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* MODERNA KNAPPAR */
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 16px;
+            width: 100%;
+            border-radius: 12px;
+            font-size: 1.1em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            box-shadow: none;
+        }
+
+        .btn-outline:hover {
+            background: var(--primary-light);
+            transform: translateY(-2px);
+        }
+
+        /* FLYTANDE RESET-KNAPP (FAB) */
+        .fab-reset {
+            position: fixed;
+            bottom: 100px;
+            right: 30px;
+            background: white;
+            color: var(--danger);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 2px solid #fee2e2;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            font-size: 1.2em;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            transition: all 0.2s;
+        }
+
+        .is-admin .fab-reset {
+            display: flex;
+        }
+
+        .fab-reset:hover {
+            background: var(--danger);
+            color: white;
+            border-color: var(--danger);
+            transform: rotate(90deg);
+        }
+
+        /* VOLUME CONTROL FAB */
+        .fab-volume {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: white;
+            color: var(--text-main);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            font-size: 1.2em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            transition: all 0.2s;
+        }
+
+        .fab-volume:hover {
+            background: #f1f5f9;
+        }
+
+        .volume-popup {
+            position: absolute;
+            bottom: 60px;
+            right: 0;
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            width: 40px;
+            height: 120px;
+        }
+
+        /* Osynlig brygga för att behålla hover mellan knapp och popup */
+        .volume-popup::after {
+            content: '';
+            position: absolute;
+            bottom: -20px;
+            left: 0;
+            width: 100%;
+            height: 20px;
+            background: transparent;
+        }
+
+        .fab-volume:hover .volume-popup,
+        .volume-popup:hover {
+            display: flex;
+        }
+
+        /* Vertikal Slider */
+        input[type=range][orient=vertical] {
+            writing-mode: bt-lr;
+            /* IE */
+            -webkit-appearance: slider-vertical;
+            /* WebKit */
+            width: 8px;
+            height: 100%;
+            padding: 0;
+        }
+
+        /* LOBBY SPECIFICS */
+        #lobby-list-container {
+            display: block;
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 12px;
+            text-align: left;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+        }
+
+        .player-chip {
+            display: inline-block;
+            background: white;
+            border: 1px solid var(--primary-light);
+            color: var(--primary);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin: 4px;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+        }
+
+        .admin-controls {
+            display: none;
+            border-top: 1px solid var(--border-color);
+            padding-top: 20px;
+            text-align: left;
+        }
+
+        .is-admin .admin-controls {
+            display: block;
+        }
+
+        .waiting-text {
+            font-style: italic;
+            color: var(--text-muted);
+            animation: pulse 2s infinite;
+            margin-top: 10px;
+        }
+
+        .is-admin .waiting-text {
+            display: none;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 0.6;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.6;
+            }
+        }
+
+        /* GAME SCREEN */
+        #game-screen {
+            align-items: stretch;
+            flex-direction: row;
+            justify-content: flex-start;
+        }
+
+        .sidebar {
+            width: 260px;
+            background: white;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            z-index: 50;
+        }
+
+        .sidebar-header {
+            padding: 25px;
+            font-weight: 800;
+            color: var(--text-main);
+            border-bottom: 1px solid var(--border-color);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9em;
+        }
+
+        .sidebar-list {
+            padding: 0;
+            margin: 0;
+            list-style: none;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        .sidebar-item {
+            padding: 15px 25px;
+            border-bottom: 1px solid #f8fafc;
+            font-size: 0.95em;
+            color: var(--text-main);
+        }
+
+        .tournament-area {
+            flex-grow: 1;
+            overflow: auto;
+            padding: 0 40px 40px 40px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .bracket {
+            display: flex;
+            gap: 60px;
+            margin: 30px auto;
+        }
+
+        .round-col {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-width: 280px;
+            position: relative;
+        }
+
+        /* STICKY HEADERS */
+        .round-header-wrapper {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: linear-gradient(to bottom, var(--bg-main) 0%, var(--bg-main) 85%, rgba(243, 244, 246, 0) 100%);
+            padding: 20px 0;
+            display: flex;
+            justify-content: center;
+            backdrop-filter: blur(2px);
+        }
+
+        .round-badge {
+            background-color: var(--primary);
+            color: white;
+            padding: 6px 18px;
+            border-radius: 30px;
+            font-size: 0.8em;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2);
+            border: 2px solid white;
+        }
+
+        .final-badge {
+            background-color: var(--warning);
+            box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3);
+        }
+
+        /* MATCH CARDS */
+        .match-card {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: var(--shadow);
+            border-top: 4px solid var(--primary);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            position: relative;
+            transition: transform 0.2s;
+        }
+
+        .match-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .match-card.tie {
+            border-top-color: var(--warning);
+            background-color: #fffbeb;
+        }
+
+        .tie-badge {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--warning);
+            color: white;
+            font-size: 0.65em;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 10px;
+            text-transform: uppercase;
+            display: none;
+        }
+
+        .match-card.tie .tie-badge {
+            display: block;
+        }
+
+        .option-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #f8fafc;
+            border-radius: 10px;
+            padding: 10px 14px;
+            border: 1px solid var(--border-color);
+            min-height: 42px;
+            position: relative;
+            transition: all 0.1s;
+        }
+
+        .option-row.clickable {
+            cursor: pointer;
+        }
+
+        .option-row.clickable:hover {
+            background-color: var(--primary-light);
+            border-color: var(--primary);
+        }
+
+        .option-row.winner {
+            background-color: #ecfdf5;
+            border-color: var(--success);
+            pointer-events: none;
+        }
+
+        .option-row.disabled {
+            opacity: 0.5;
+            cursor: default;
+            background: #eee;
+        }
+
+        .option-name {
+            font-weight: 600;
+            font-size: 0.95em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 130px;
+        }
+
+        .action-container {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .vote-pill {
+            font-size: 0.8em;
+            font-weight: 700;
+            color: var(--primary);
+            background: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            border: 1px solid var(--primary-light);
+        }
+
+        .btn-instant {
+            background-color: #fff7ed;
+            color: #d97706;
+            border: 1px solid #ffedd5;
+            border-radius: 8px;
+            width: 28px;
+            height: 28px;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .is-admin .btn-instant {
+            display: flex;
+        }
+
+        .btn-instant:hover {
+            background-color: var(--warning);
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .vs-divider {
+            text-align: center;
+            font-size: 0.65em;
+            color: var(--text-muted);
+            font-weight: bold;
+            margin: -6px 0;
+            z-index: 1;
+        }
+
+        /* WINNER OVERLAY - MODERN */
+        #winner-screen {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            z-index: 3000;
+            text-align: center;
+        }
+
+        #winner-name {
+            font-size: 4em;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--primary), var(--warning));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 20px 0;
+        }
+
+        .btn-restart {
+            display: none;
+            margin: 20px auto;
+            background: var(--text-main);
+            color: white;
+            width: auto;
+            padding: 15px 40px;
+            border-radius: 50px;
+        }
+
+        .is-admin .btn-restart {
+            display: block;
+        }
+
+        .btn-restart:hover {
+            background: black;
+            transform: scale(1.05);
+        }
+
+        /* MODAL */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal.hidden {
+            display: none;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 400px;
+            position: relative;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 28px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #94a3b8;
+            transition: color 0.2s;
+        }
+
+        .close-modal:hover {
+            color: var(--danger);
+        }
+
+        /* BUBBLE INPUT SYSTEM */
+        .bubble-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 12px;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            min-height: 120px;
+            background: white;
+            cursor: text;
+            transition: border 0.2s, box-shadow 0.2s;
+            align-content: flex-start;
+        }
+
+        .bubble-container:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+
+        .bubble {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            user-select: none;
+            cursor: default;
+            transition: transform 0.1s;
+        }
+
+        .bubble:hover {
+            transform: scale(1.05);
+        }
+
+        .bubble-remove {
+            cursor: pointer;
+            opacity: 0.6;
+            font-size: 1.1em;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+        }
+
+        .bubble-remove:hover {
+            opacity: 1;
+        }
+
+        @keyframes popIn {
+            from {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .bubble-input {
+            border: none;
+            outline: none;
+            padding: 8px;
+            flex-grow: 1;
+            min-width: 120px;
+            font-size: 1em;
+            font-family: inherit;
+            background: transparent;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="custom-tooltip"></div>
+
+    <!-- START SCREEN (MAIN MENU) -->
+    <div id="start-screen" class="screen">
+        <div class="card">
+            <h1>Turnering Deluxe</h1>
+            <p style="color:var(--text-muted);">Anslut till ett rum eller skapa ett nytt</p>
+
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <input type="text" id="room-code-input" placeholder="Kod (4 siffror)" maxlength="4"
+                    style="text-align:center; letter-spacing:2px; font-weight:bold;"
+                    onkeydown="if(event.key === 'Enter') handleJoinClick()">
+                <button class="btn" style="flex:1;" onclick="handleJoinClick()">Gå med</button>
+            </div>
+
+            <div style="width:100%; height:1px; background:var(--border-color); margin: 20px 0;"></div>
+
+            <button class="btn btn-outline" onclick="handleCreateClick()">Skapa Nytt Rum 👑</button>
+        </div>
+    </div>
+
+    <!-- NAME ENTRY SCREEN -->
+    <div id="name-screen" class="screen hidden">
+        <div class="card">
+            <h1 id="name-screen-title">Gå med</h1>
+            <p style="color:var(--text-muted);" id="name-screen-desc">Ange ditt namn</p>
+            <input type="text" id="username" placeholder="Ditt namn..." autofocus
+                onkeydown="if(event.key === 'Enter') submitName()">
+
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-outline" onclick="goBackToStart()">Tillbaka</button>
+                <button class="btn" onclick="submitName()">Kör! 🚀</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOBBY SCREEN -->
+    <div id="lobby-screen" class="screen hidden">
+        <div class="card">
+            <div style="text-align:center; margin-bottom: 20px;"></div>
+            <span
+                style="font-size:1.2em; font-weight:800; color:var(--text-muted); letter-spacing:2px; text-transform:uppercase; display:block; margin-bottom:5px;">RUMKOD</span>
+            <span id="display-room-code"
+                style="font-size:4em; font-weight:900; color:var(--primary); letter-spacing:4px; line-height:1;">----</span>
+        </div>
+
+        <div id="lobby-list-container">
+            <div
+                style="font-size:0.75em; color:var(--text-muted); margin-bottom:8px; font-weight:bold; letter-spacing:1px;">
+                ANSLUTNA DELTAGARE
+            </div>
+            <div id="lobby-list"></div>
+        </div>
+
+        <div class="admin-controls">
+            <label style="font-weight:700; display:block; margin-top:10px; font-size:0.9em;">Alternativ (Skriv och
+                tryck Enter):</label>
+
+            <div class="bubble-container" id="bubble-container"
+                onclick="document.getElementById('bubble-input').focus()">
+                <!-- Bubbles rendered here -->
+                <input type="text" id="bubble-input" class="bubble-input" placeholder="Lägg till alternativ..."
+                    autocomplete="off">
+            </div>
+            <p style="font-size:0.8em; color:var(--text-muted); margin-top:5px; font-style:italic;">Tips: Klistra in
+                en lista för att lägga till flera samtidigt.</p>
+
+            <button class="btn" style="margin-top:15px;" onclick="startGame()">Starta Turnering 🚀</button>
+            <div style="margin-top:15px; display:flex; flex-direction:column; gap:10px;">
+                <label
+                    style="cursor:pointer; font-weight:600; font-size:0.9em; display:flex; align-items:center; gap:8px;">
+                    <input type="checkbox" id="admin-participates"
+                        style="width:20px; height:20px; accent-color:var(--primary);" onchange="toggleAdminNameInput()">
+                    Jag vill vara med och rösta 🙋‍♂️
+                </label>
+            </div>
+            <p style="font-size:0.8em; color:var(--text-muted); margin-top:10px;">Antal röster avgörs automatiskt av
+                antalet spelare.</p>
+        </div>
+
+        <h3 class="waiting-text">Väntar på att admin ska starta...</h3>
+    </div>
+    </div>
+
+    <!-- ADMIN NAME MODAL -->
+    <div id="admin-name-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeAdminModal()">&times;</span>
+            <h2 style="margin-bottom:10px;">Ange ditt namn</h2>
+            <p style="color:var(--text-muted); margin-bottom:20px;">Vad ska du heta i spelet?</p>
+            <input type="text" id="modal-name-input" placeholder="Ditt namn..."
+                style="width:100%; padding:12px; border:2px solid var(--border-color); border-radius:8px; font-size:1.1em; margin-bottom:20px; text-align:center;">
+            <button class="btn" onclick="submitAdminName()">Kör! 🚀</button>
+        </div>
+    </div>
+
+    <!-- GAME SCREEN -->
+    <div id="game-screen" class="screen hidden">
+        <div class="sidebar">
+            <div class="sidebar-header">Alternativ</div>
+            <ul class="sidebar-list" id="sidebar-list"></ul>
+        </div>
+        <div class="tournament-area">
+            <div class="bracket" id="bracket-container"></div>
+        </div>
+
+        <button class="fab-reset" onclick="resetGame()" title="Starta om allt">↻</button>
+    </div>
+
+    <!-- WINNER SCREEN -->
+    <div id="winner-screen" class="screen hidden">
+        <h1 style="font-size:2em; color:var(--text-muted); margin:0;">VINNARE</h1>
+        <div id="winner-name">---</div>
+        <button class="btn-restart" onclick="resetGame()">Starta Ny Turnering</button>
+    </div>
+
+    <!-- VOLUME CONTROL FAB -->
+    <div class="fab-volume" id="fab-volume" onclick="AudioEngine.toggleMute(event)">
+        <div id="volume-icon-container"
+            style="display:flex; align-items:center; justify-content:center; width:100%; height:100%;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            </svg>
+        </div>
+        <div class="volume-popup" onclick="event.stopPropagation()">
+            <input type="range" orient="vertical" min="0" max="100" value="50"
+                oninput="AudioEngine.setVolume(this.value)">
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let myId = null;
+        let isAdmin = false;
+        let hasVotedIn = [];
+        let totalVoters = 1;
+
+        // State för UI-flow
+        let flowMode = null; // 'create' eller 'join'
+        let targetRoomCode = null;
+
+        // BUBBLE INPUT STATE
+        let bubbleParticipants = [];
+        const bubbleBgColors = ['#e0e7ff', '#d1fae5', '#ffedd5', '#fce7f3', '#e0f2fe', '#ede9fe'];
+        const bubbleTextColors = ['#4338ca', '#047857', '#b45309', '#be185d', '#0369a1', '#7c3aed'];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const bInput = document.getElementById('bubble-input');
+
+            bInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addBubble(bInput.value);
+                    bInput.value = "";
+                } else if (e.key === 'Backspace' && bInput.value === "" && bubbleParticipants.length > 0) {
+                    removeBubble(bubbleParticipants.length - 1);
+                }
+            });
+
+            bInput.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const text = (e.originalEvent || e).clipboardData.getData('text/plain');
+                const parts = text.split(/\n|,/); // Split on newline or comma
+                parts.forEach(p => addBubble(p));
+                bInput.value = "";
+            });
+        });
+
+        function addBubble(text) {
+            const clean = text.trim();
+            if (!clean) return;
+            // Optional: Prevent duplicates? bubbleParticipants.includes(clean)
+            bubbleParticipants.push(clean);
+            renderBubbles();
+        }
+
+        function removeBubble(index) {
+            bubbleParticipants.splice(index, 1);
+            renderBubbles();
+        }
+
+        function renderBubbles() {
+            const container = document.getElementById('bubble-container');
+            const input = document.getElementById('bubble-input');
+
+            // Spara input elementet
+            // Rensa container men behåll input
+            // Enklast: ta bort alla .bubble, lägg in nya före input
+
+            const existingBubbles = container.querySelectorAll('.bubble');
+            existingBubbles.forEach(b => b.remove());
+
+            bubbleParticipants.forEach((text, i) => {
+                const bubble = document.createElement('div');
+                bubble.className = 'bubble';
+
+                // Color logic
+                const colIdx = Math.abs(hashCode(text)) % bubbleBgColors.length;
+                bubble.style.backgroundColor = bubbleBgColors[colIdx];
+                bubble.style.color = bubbleTextColors[colIdx];
+
+                const span = document.createElement('span');
+                span.innerText = text;
+                bubble.appendChild(span);
+
+                const x = document.createElement('div');
+                x.className = 'bubble-remove';
+                x.innerHTML = '&times;';
+                x.onclick = (e) => { e.stopPropagation(); removeBubble(i); };
+                bubble.appendChild(x);
+
+                container.insertBefore(bubble, input);
+            });
+        }
+
+        function hashCode(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = (hash << 5) - hash + char;
+                hash |= 0;
+            }
+            return hash;
+        }
+
+        // --- SOFT AUDIO ENGINE ---
+        // --- SOFT AUDIO ENGINE ---
+        const AudioEngine = {
+            ctx: null,
+            masterGain: null,
+            volume: 0.5,
+            isMuted: false,
+
+            init: function () {
+                if (this.ctx) return;
+                window.AudioContext = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioContext();
+                this.masterGain = this.ctx.createGain();
+                this.masterGain.gain.value = this.volume;
+                this.masterGain.connect(this.ctx.destination);
+            },
+
+            setVolume: function (val) {
+                this.volume = val / 100;
+                if (this.isMuted && this.volume > 0) {
+                    this.isMuted = false; // Unmute if dragging slider
+                    this.updateIcon();
+                }
+                if (this.masterGain && !this.isMuted) {
+                    this.masterGain.gain.value = this.volume;
+                }
+            },
+
+            toggleMute: function (e) {
+                if (e) e.stopPropagation();
+                this.isMuted = !this.isMuted;
+
+                if (this.masterGain) {
+                    this.masterGain.gain.value = this.isMuted ? 0 : this.volume;
+                }
+                this.updateIcon();
+            },
+
+            updateIcon: function () {
+                const iconContainer = document.getElementById('volume-icon-container');
+                if (!iconContainer) return;
+
+                if (this.isMuted || this.volume === 0) {
+                    // Mute Icon
+                    iconContainer.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>';
+                } else {
+                    // Speaker Icon
+                    iconContainer.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>';
+                }
+            },
+
+            playSoftTone: function (freq, duration, type = 'sine') {
+                if (!this.ctx) this.init();
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+
+                // Om mutad, spela inget (spara prestanda)
+                if (this.isMuted || this.volume <= 0.01) return;
+
+                const t = this.ctx.currentTime;
+                const o = this.ctx.createOscillator();
+                const g = this.ctx.createGain();
+                o.type = type;
+                o.frequency.value = freq;
+
+                g.gain.setValueAtTime(0, t);
+                g.gain.linearRampToValueAtTime(0.1, t + 0.05);
+                g.gain.exponentialRampToValueAtTime(0.001, t + duration);
+
+                o.connect(g);
+                g.connect(this.masterGain);
+                o.start(t); o.stop(t + duration);
+            },
+            playPop: function () { this.playSoftTone(500, 0.15, 'sine'); },
+            playZap: function () {
+                if (!this.ctx) this.init();
+                if (this.isMuted || this.volume <= 0.01) return;
+
+                const t = this.ctx.currentTime;
+                const o = this.ctx.createOscillator();
+                const g = this.ctx.createGain();
+                o.frequency.setValueAtTime(600, t);
+                o.frequency.exponentialRampToValueAtTime(100, t + 0.3);
+                g.gain.setValueAtTime(0.05, t);
+                g.gain.linearRampToValueAtTime(0, t + 0.3);
+                o.connect(g); g.connect(this.masterGain);
+                o.start(t); o.stop(t + 0.3);
+            },
+            playWin: function () {
+                this.playSoftTone(523.25, 0.4);
+                setTimeout(() => this.playSoftTone(659.25, 0.4), 100);
+                setTimeout(() => this.playSoftTone(783.99, 0.6), 200);
+            },
+            playVictory: function () {
+                [523, 659, 784, 1046].forEach((f, i) => {
+                    setTimeout(() => this.playSoftTone(f, 0.6, 'triangle'), i * 150);
+                });
+            }
+        };
+
+        // --- TOOLTIP ---
+        const tooltip = document.getElementById('custom-tooltip');
+        function showTooltip(e, text) { if (!text) return; tooltip.innerText = text; tooltip.style.display = 'block'; moveTooltip(e); }
+        function moveTooltip(e) { tooltip.style.left = (e.clientX + 15) + 'px'; tooltip.style.top = (e.clientY + 15) + 'px'; }
+        function hideTooltip() { tooltip.style.display = 'none'; }
+
+        // --- NAVIGATION FLOW ---
+
+        function handleJoinClick() {
+            const code = document.getElementById('room-code-input').value;
+            if (code.length !== 4 || isNaN(code)) {
+                alert("Ange en giltig 4-siffrig kod!");
+                return;
+            }
+            // Validera kod först
+            socket.emit('checkRoom', code, (exists) => {
+                if (exists) {
+                    flowMode = 'join';
+                    targetRoomCode = code;
+                    document.getElementById('start-screen').classList.add('hidden');
+                    document.getElementById('name-screen').classList.remove('hidden');
+                    document.getElementById('name-screen-title').innerText = "Gå med i Rum " + code;
+                } else {
+                    alert("Rummet hittades inte!");
+                }
+            });
+        }
+
+        async function handleCreateClick() {
+            // Direkt skapa rum med tomt namn (så admin är osynlig i listan först)
+            AudioEngine.init();
+            socket.emit('createRoom', '');
+        }
+
+        function goBackToStart() {
+            document.getElementById('name-screen').classList.add('hidden');
+            document.getElementById('start-screen').classList.remove('hidden');
+        }
+
+        function submitName() {
+            const name = document.getElementById('username').value;
+            if (!name) return alert("Ange ditt namn!");
+
+            AudioEngine.init(); // Starta ljudmotor vid user interaction
+
+            if (flowMode === 'join') {
+                socket.emit('joinRoom', { code: targetRoomCode, name: name });
+            }
+        }
+
+        // --- SOCKET LOGIK ---
+
+        socket.on('roomCreated', (data) => {
+            enterLobby(data);
+        });
+
+        socket.on('joinedSuccess', (data) => {
+            enterLobby(data);
+        });
+
+        socket.on('errorMsg', (msg) => {
+            alert(msg);
+            goBackToStart();
+        });
+
+        function enterLobby(data) {
+            myId = socket.id;
+            isAdmin = data.isAdmin;
+            targetRoomCode = data.code;
+
+            document.getElementById('display-room-code').innerText = data.code;
+            updateAdminUI();
+
+            document.getElementById('name-screen').classList.add('hidden');
+            document.getElementById('lobby-screen').classList.remove('hidden');
+        }
+
+        socket.on('youAreAdmin', () => {
+            isAdmin = true;
+            updateAdminUI();
+            alert("Du är nu admin för rummet!");
+        });
+
+        socket.on('updateLobby', (players) => {
+            // Filtrera bort spelare som saknar namn (t.ex. Admin som inte deltar)
+            const visiblePlayers = players.filter(p => p.name && p.name.trim() !== "");
+
+            // Uppdatera vänt-texten
+            const admin = players.find(p => p.isAdmin);
+            const waitingText = document.querySelector('.waiting-text');
+            if (waitingText) {
+                if (admin && admin.name && admin.name.trim() !== "") {
+                    waitingText.innerText = `Väntar på att ${admin.name} ska starta...`;
+                } else {
+                    waitingText.innerText = "Väntar på att admin ska starta...";
+                }
+            }
+
+            const list = document.getElementById('lobby-list');
+            if (visiblePlayers.length === 0) {
+                list.innerHTML = "<span style='font-style:italic; color:#999; font-size:0.9em;'>Väntar på deltagare...</span>";
+            } else {
+                list.innerHTML = visiblePlayers.map(p => {
+                    let badge = p.isAdmin ? '👑' : '';
+                    return `<span class="player-chip">${badge} ${p.name}</span>`;
+                }).join('');
+            }
+        });
+
+        socket.on('gameStarted', (state) => {
+            document.getElementById('lobby-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            totalVoters = state.votersPerMatch;
+
+            const sideList = document.getElementById('sidebar-list');
+            sideList.innerHTML = "";
+            [...state.participants].sort().forEach(p => {
+                let li = document.createElement('li'); li.className = 'sidebar-item'; li.innerText = p;
+                li.addEventListener('mouseenter', (e) => showTooltip(e, p)); li.addEventListener('mousemove', moveTooltip); li.addEventListener('mouseleave', hideTooltip);
+                sideList.appendChild(li);
+            });
+
+            renderBracket(state.matches);
+            AudioEngine.playPop();
+        });
+
+        socket.on('updateState', (state) => {
+            renderBracket(state.matches);
+            AudioEngine.playPop();
+        });
+
+        socket.on('returnToLobby', () => {
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('winner-screen').classList.add('hidden');
+            document.getElementById('lobby-screen').classList.remove('hidden');
+            // Reset client state if needed
+            hasVotedIn = [];
+        });
+
+        // --- FUNKTIONER ---
+
+        function updateAdminUI() {
+            if (isAdmin) document.body.classList.add('is-admin');
+            else document.body.classList.remove('is-admin');
+        }
+
+        function startGame() {
+            // Use bubbleParticipants instead of textarea
+            const parts = [...bubbleParticipants]; // Copy
+            // const pText = document.getElementById('participants-input').value; // OLD
+            // const parts = pText.split('\n').map(s => s.trim()).filter(s => s !== "");
+
+            if (parts.length < 2) return alert("Minst 2 alternativ!");
+
+            const matches = generateBracketStructure(parts);
+            const adminParticipates = document.getElementById('admin-participates').checked;
+            socket.emit('startGame', { participants: parts, matches: matches, adminParticipates: adminParticipates });
+        }
+
+        function vote(mId, pNum) {
+            if (!isAdmin && hasVotedIn.includes(mId)) return;
+            socket.emit('vote', { matchId: mId, playerNum: pNum });
+            if (!isAdmin) hasVotedIn.push(mId);
+        }
+
+        function instantWin(mId, pNum, e) {
+            e.stopPropagation();
+            socket.emit('instantWin', { matchId: mId, playerNum: pNum });
+            AudioEngine.playZap();
+        }
+
+        function resetGame() {
+            if (confirm("Starta om allt? Alla skickas tillbaka till lobbyn.")) socket.emit('resetGame');
+        }
+
+        // --- BRACKET GENERATOR ---
+        // --- ADMIN NAME MODAL LOGIC ---
+
+        function toggleAdminNameInput() {
+            const cb = document.getElementById('admin-participates');
+            if (cb.checked) {
+                // Show Modal
+                document.getElementById('admin-name-modal').classList.remove('hidden');
+                document.getElementById('modal-name-input').value = ""; // Reset
+                setTimeout(() => document.getElementById('modal-name-input').focus(), 100);
+            } else {
+                // Admin avmarkerade rutan -> Ta bort namnet (gör osynlig)
+                updateAdminName("");
+            }
+        }
+
+        function closeAdminModal() {
+            document.getElementById('admin-name-modal').classList.add('hidden');
+            // Uncheck the box since they cancelled
+            document.getElementById('admin-participates').checked = false;
+        }
+
+        function submitAdminName() {
+            const name = document.getElementById('modal-name-input').value;
+            if (!name.trim()) {
+                alert("Ange ett namn!");
+                return;
+            }
+            updateAdminName(name);
+            document.getElementById('admin-name-modal').classList.add('hidden');
+        }
+
+        // Allow Enter key in modal
+        document.getElementById('modal-name-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') submitAdminName();
+        });
+
+        function updateAdminName(newName) {
+            // Tillåt tom sträng för att "ta bort" admin
+            socket.emit('updateName', { name: newName });
+        }
+
+        function generateBracketStructure(names) {
+            let temp = [];
+            let players = names.map(n => ({ type: 'player', val: n }));
+            let total = players.length;
+            let powerOf2 = 1; while (powerOf2 * 2 <= total) { powerOf2 *= 2; }
+            let qualCount = total - powerOf2;
+
+            if (qualCount > 0) {
+                let qual = players.slice(total - (qualCount * 2));
+                let byes = players.slice(0, total - (qualCount * 2));
+                let qRes = [];
+                for (let i = 0; i < qualCount; i++) {
+                    let mId = `q${i}`;
+                    temp.push({ id: mId, next: null, p1: qual[i * 2].val, p2: qual[i * 2 + 1].val, src1: null, src2: null, v1: 0, v2: 0, winner: null, round: 0 });
+                    qRes.push({ type: 'match', val: mId });
+                }
+                buildRounds(temp, [...byes, ...qRes], 1);
+            } else {
+                buildRounds(temp, players, 1);
+            }
+            return temp;
+        }
+
+        function buildRounds(arr, feed, r) {
+            let cur = feed;
+            while (cur.length > 1) {
+                let next = [];
+                for (let i = 0; i < cur.length; i += 2) {
+                    let mId = `r${r}_m${i / 2}`;
+                    let m = { id: mId, next: null, p1: cur[i].type == 'player' ? cur[i].val : null, p2: cur[i + 1].type == 'player' ? cur[i + 1].val : null, src1: cur[i].type == 'match' ? cur[i].val : null, src2: cur[i + 1].type == 'match' ? cur[i + 1].val : null, v1: 0, v2: 0, winner: null, round: r };
+                    let p1 = arr.find(x => x.id === m.src1); if (p1) p1.next = mId;
+                    let p2 = arr.find(x => x.id === m.src2); if (p2) p2.next = mId;
+                    arr.push(m);
+                    next.push({ type: 'match', val: mId });
+                }
+                cur = next; r++;
+            }
+        }
+
+        // --- RENDER ---
+        function renderBracket(matches) {
+            const c = document.getElementById('bracket-container');
+            c.innerHTML = "";
+            let maxR = 0; matches.forEach(m => maxR = Math.max(maxR, m.round));
+
+            for (let r = 0; r <= maxR; r++) {
+                let rndMatches = matches.filter(m => m.round === r);
+                if (rndMatches.length === 0) continue;
+
+                let col = document.createElement('div'); col.className = 'round-col';
+
+                let headWrap = document.createElement('div'); headWrap.className = 'round-header-wrapper';
+                let badge = document.createElement('div'); badge.className = 'round-badge';
+                if (r === maxR) badge.classList.add('final-badge');
+                badge.innerText = r === 0 ? "Kval" : (r === maxR ? "FINAL" : (r === maxR - 1 ? "Semi" : `Runda ${r}`));
+                headWrap.appendChild(badge);
+                col.appendChild(headWrap);
+
+                let cardsC = document.createElement('div');
+                cardsC.style.display = 'flex'; cardsC.style.flexDirection = 'column'; cardsC.style.justifyContent = 'space-around'; cardsC.style.flexGrow = '1'; cardsC.style.gap = '20px';
+
+                rndMatches.forEach(m => {
+                    let card = document.createElement('div'); card.className = 'match-card';
+                    if ((m.v1 + m.v2 >= totalVoters) && m.v1 === m.v2 && !m.winner) card.classList.add('tie');
+
+                    let tb = document.createElement('div'); tb.className = 'tie-badge'; tb.innerText = "Avgörande!"; card.appendChild(tb);
+
+                    [1, 2].forEach(pNum => {
+                        let name = pNum === 1 ? m.p1 : m.p2;
+                        let votes = pNum === 1 ? m.v1 : m.v2;
+                        let row = document.createElement('div'); row.className = 'option-row';
+
+                        if (m.winner === pNum) row.classList.add('winner');
+
+                        let hasVoted = (!isAdmin && hasVotedIn.includes(m.id));
+
+                        // Check if Admin can vote
+                        let adminCanVote = isAdmin && document.getElementById('admin-participates') && document.getElementById('admin-participates').checked;
+
+                        if (isAdmin) {
+                            if (adminCanVote) {
+                                // If admin participates, they vote like a normal player locally
+                                hasVoted = hasVotedIn.includes(m.id);
+                            } else {
+                                // If admin does NOT participate, input is disabled (as if they voted)
+                                hasVoted = true;
+                            }
+                        }
+
+                        if (name && !m.winner) {
+                            if (!hasVoted) {
+                                row.classList.add('clickable');
+                                row.onclick = () => vote(m.id, pNum);
+                            } else {
+                                row.classList.add('disabled');
+                            }
+                        } else if (!name) row.classList.add('empty');
+
+                        let nSpan = document.createElement('span'); nSpan.className = 'option-name'; nSpan.innerText = name || '...';
+                        if (name) {
+                            nSpan.addEventListener('mouseenter', (e) => showTooltip(e, name)); nSpan.addEventListener('mousemove', moveTooltip); nSpan.addEventListener('mouseleave', hideTooltip);
+                        }
+                        row.appendChild(nSpan);
+
+                        let acts = document.createElement('div'); acts.className = 'action-container';
+                        if (name) {
+                            let pill = document.createElement('span'); pill.className = 'vote-pill'; pill.innerText = votes; acts.appendChild(pill);
+                            if (m.winner === pNum) {
+                                acts.innerHTML += ' 🏆';
+                                if (r === maxR && !m.next) { // Final Win
+                                    document.getElementById('winner-name').innerText = name;
+                                    document.getElementById('winner-screen').classList.remove('hidden');
+                                    AudioEngine.playVictory();
+                                } else if (m.winner === pNum) { // Match Win
+                                    AudioEngine.playWin();
+                                }
+                            } else if (!m.winner) {
+                                let btn = document.createElement('button'); btn.className = 'btn-instant'; btn.innerHTML = '⚡';
+                                btn.addEventListener('mouseenter', (e) => showTooltip(e, "Vinn direkt")); btn.addEventListener('mousemove', moveTooltip); btn.addEventListener('mouseleave', hideTooltip);
+                                btn.onclick = (e) => instantWin(m.id, pNum, e);
+                                acts.appendChild(btn);
+                            }
+                        }
+                        row.appendChild(acts);
+                        card.appendChild(row);
+
+                        if (pNum === 1) {
+                            let vs = document.createElement('div'); vs.className = 'vs-divider'; vs.innerText = 'VS'; card.appendChild(vs);
+                        }
+                    });
+                    cardsC.appendChild(card);
+                });
+                col.appendChild(cardsC);
+                c.appendChild(col);
+            }
+        }
+    </script>
+</body>
+
+</html>
