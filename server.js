@@ -241,5 +241,8 @@ function advanceWinner(room, match, winnerNum) {
 }
 
 server.listen(3000, () => {
-    console.log('Servern är startad och redo! (Intern port: 3000)');
+    console.log('------------------------------------------------');
+    console.log('✅ Servern är igång (Internt: 3000)');
+    console.log('🌍 Gå till: http://<DIN-SERVER-IP>:3050');
+    console.log('------------------------------------------------');
 });
