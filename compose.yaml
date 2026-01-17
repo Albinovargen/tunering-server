@@ -1,8 +1,8 @@
 services:
-  tunering-server:
+  turnering-server:
     build: .
     restart: unless-stopped
     ports:
       - "3050:3000"
     # Provide a name for the container
-    container_name: tunering-server
+    container_name: turnering-server
